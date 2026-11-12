@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SCU TABÙ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SCU TABÙ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  html, body { margin: 0; height: 100%; background: #fff; font-family: Arial, Helvetica, sans-serif; color: #2A2421; }
+  #app { position: fixed; top: env(safe-area-inset-top); left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% - env(safe-area-inset-top)); border: 0; }
+  #avvio { position: fixed; inset: 0; z-index: 2; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .4s; padding: 24px; text-align: center; }
+  #avvio.via { opacity: 0; pointer-events: none; }
+  #avvio img { width: 140px; height: 140px; }
+  #avvio b { font-size: 24px; color: #CC0000; letter-spacing: .02em; }
+  #avvio span { font-size: 15px; color: #77695F; }
+  #fuori { display: none; margin-top: 18px; font-size: 15px; color: #CC0000; font-weight: 700; }
+  @media (prefers-reduced-motion: reduce) { #avvio { transition: none; } }
+</style>
+</head>
+<body>
+<div id="avvio" role="status">
+  <img src="icon-512.png" alt="">
+  <b>SCU TABÙ</b>
+  <span>Apertura del gestionale…</span>
+  <a id="fuori" href="#" target="_top" rel="noopener">Non si apre? Aprilo nel browser</a>
+</div>
+<iframe id="app" title="Gestionale SCU TABÙ" allow="clipboard-write"></iframe>
+<script>
+  /* Indirizzo dell'app su Google (finisce con /exec). È l'indirizzo comune, NON il link personale. */
+  var APP = 'https://script.google.com/macros/s/AKfycbzXHSkAZ2HMrvw1ltZc-8MDAG2gwloJ7pLK1XN_Laff2ECF-teb9frxY36TPFXb5svqJg/exec';
+
+  // Chi apre questa pagina con il proprio link personale (…?k=…) la ritrova pronta le volte successive.
+  var k = '';
+  try {
+    var p = new URLSearchParams(location.search);
+    k = (p.get('k') || '').replace(/[^A-Za-z0-9]/g, '');
+    if (k) { localStorage.setItem('scuK', k); history.replaceState(null, '', location.pathname); }
+    else { k = localStorage.getItem('scuK') || ''; }
+  } catch (e) { /* senza memoria del browser si entra con il codice personale */ }
+  var url = APP + '?avvio=1' + (k ? '&k=' + encodeURIComponent(k) : '');
+  var f = document.getElementById('app'), avvio = document.getElementById('avvio'), fuori = document.getElementById('fuori');
+  fuori.href = url;
+  f.addEventListener('load', function () { avvio.classList.add('via'); });
+  f.src = url;
+  // Se dopo 15 secondi non si è aperta (rete lenta o blocco del browser), si offre di aprirla direttamente
+  setTimeout(function () { if (!avvio.classList.contains('via')) fuori.style.display = 'inline'; }, 15000);
+</script>
+</body>
+</html>
