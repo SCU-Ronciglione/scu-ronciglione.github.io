@@ -29,7 +29,7 @@
   <img src="icon-512.png" alt="">
   <b>SCU TABÙ</b>
   <span>Apertura del gestionale…</span>
-  <a id="fuori" href="#" target="_top" rel="noopener">Non si apre? Aprilo nel browser</a>
+  <a id="fuori" href="#" target="_top" rel="noopener" style="display:inline" onclick="try{localStorage.setItem('scuDiretta',String(Date.now()))}catch(e){}">Non si apre? Tocca qui</a>
 </div>
 <iframe id="app" title="Gestionale SCU TABÙ" allow="clipboard-write"></iframe>
 <script>
@@ -47,10 +47,37 @@
   var url = APP + '?avvio=1' + (k ? '&k=' + encodeURIComponent(k) : '');
   var f = document.getElementById('app'), avvio = document.getElementById('avvio'), fuori = document.getElementById('fuori');
   fuori.href = url;
-  f.addEventListener('load', function () { avvio.classList.add('via'); });
-  f.src = url;
-  // Se dopo 15 secondi non si è aperta (rete lenta o blocco del browser), si offre di aprirla direttamente
-  setTimeout(function () { if (!avvio.classList.contains('via')) fuori.style.display = 'inline'; }, 15000);
+
+  // Dopo l'accesso l'app ci passa la chiave personale: la teniamo noi, così il codice non viene più chiesto.
+  // Si accetta solo dall'app su Google; con "Esci" la chiave si cancella.
+  window.addEventListener('message', function (e) {
+    var o = String(e.origin || ''), d = e.data || {};
+    if (!/^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|script\.google\.com)$/i.test(o)) return;
+    try {
+      if (d.scu === 'chiave' && /^[A-Za-z0-9]{10,80}$/.test(String(d.k || ''))) {
+        localStorage.setItem('scuK', d.k);
+        // appena scritto il codice: riapre l'app qui dentro, già con la chiave
+        if (d.entra) document.getElementById('app').src = APP + '?avvio=1&k=' + encodeURIComponent(d.k);
+      }
+      if (d.scu === 'esci') { localStorage.removeItem('scuK'); localStorage.removeItem('scuDiretta'); }
+    } catch (err) { /* niente */ }
+  });
+
+  // Su alcuni telefoni Google non lascia aprire l'app dentro questa pagina (account o cookie del browser).
+  // L'app, quando si apre, manda il segnale "pronto". Se non arriva, si apre l'app direttamente.
+  function apriDiretta() { try { localStorage.setItem('scuDiretta', String(Date.now())); } catch (e) { /* niente */ } location.replace(url); }
+  var diretta = 0;
+  try { diretta = Number(localStorage.getItem('scuDiretta') || 0); } catch (e) { diretta = 0; }
+  if (diretta && Date.now() - diretta < 7 * 864e5) {
+    location.replace(url); // su questo telefono funziona solo così: niente attesa (si riprova lo schermo intero dopo 7 giorni)
+  } else {
+    var pronta = false;
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.scu === 'pronto' && !pronta) { pronta = true; avvio.classList.add('via'); }
+    });
+    f.src = url;
+    setTimeout(function () { if (!pronta) apriDiretta(); }, 12000);
+  }
 </script>
 </body>
 </html>
