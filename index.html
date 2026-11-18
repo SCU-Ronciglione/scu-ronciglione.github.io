@@ -75,7 +75,11 @@
       finito = true; clearTimeout(lento);
       // L'app sa a quale indirizzo mandare le sue richieste; la libreria del QR si carica senza bloccare
       var tag = '<' + 'script';
-      html = html.replace('<head>', '<head>' + tag + '>window.SCU_EXEC = ' + JSON.stringify(APP) + ';<\/script>')
+      // Nome, icona e "installa app" restano quelli di SCU TABÙ anche dopo che l'app ha preso il posto di questa pagina
+      var testa = '<title>SCU TABÙ</title><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png">' +
+        '<link rel="icon" type="image/png" href="icon-192.png"><meta name="theme-color" content="#FFFFFF"><meta name="mobile-web-app-capable" content="yes">' +
+        '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="SCU TABÙ"><meta name="apple-mobile-web-app-status-bar-style" content="default">';
+      html = html.replace('<head>', '<head>' + testa + tag + '>window.SCU_EXEC = ' + JSON.stringify(APP) + ';<\/script>')
         .split(tag + ' src=').join(tag + ' async src=');
       document.open();
       document.write(html);
