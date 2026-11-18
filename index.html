@@ -14,70 +14,77 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   html, body { margin: 0; height: 100%; background: #fff; font-family: Arial, Helvetica, sans-serif; color: #2A2421; }
-  #app { position: fixed; top: env(safe-area-inset-top); left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% - env(safe-area-inset-top)); border: 0; }
-  #avvio { position: fixed; inset: 0; z-index: 2; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .4s; padding: 24px; text-align: center; }
-  #avvio.via { opacity: 0; pointer-events: none; }
+  #avvio { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
   #avvio img { width: 140px; height: 140px; }
   #avvio b { font-size: 24px; color: #CC0000; letter-spacing: .02em; }
   #avvio span { font-size: 15px; color: #77695F; }
-  #fuori { display: none; margin-top: 18px; font-size: 15px; color: #CC0000; font-weight: 700; }
-  @media (prefers-reduced-motion: reduce) { #avvio { transition: none; } }
+  #aiuto { display: none; flex-direction: column; gap: 10px; margin-top: 12px; }
+  #aiuto a { font-size: 16px; font-weight: 700; padding: 12px 20px; border-radius: 10px; text-decoration: none; border: 2px solid #CC0000; color: #CC0000; }
+  #aiuto a.pri { background: #CC0000; color: #fff; }
 </style>
 </head>
 <body>
 <div id="avvio" role="status">
   <img src="icon-512.png" alt="">
   <b>SCU TABÙ</b>
-  <span>Apertura del gestionale…</span>
-  <a id="fuori" href="#" target="_top" rel="noopener" style="display:inline" onclick="try{localStorage.setItem('scuDiretta',String(Date.now()))}catch(e){}">Non si apre? Tocca qui</a>
+  <span id="msg">Apertura del gestionale…</span>
+  <div id="aiuto">
+    <a id="riprova" class="pri" href="#">Riprova</a>
+    <a id="browser" href="#">Apri nel browser</a>
+  </div>
 </div>
-<iframe id="app" title="Gestionale SCU TABÙ" allow="clipboard-write"></iframe>
 <script>
-  /* Indirizzo dell'app su Google (finisce con /exec). È l'indirizzo comune, NON il link personale. */
+  /*
+   * Pagina dell'icona SCU TABÙ.
+   * Chiede l'app al gestionale su Google (indirizzo comune, finisce con /exec) e la mostra a schermo intero.
+   * Qui non ci sono dati né codici: tutto resta su Google. NON è il link personale.
+   */
   var APP = 'https://script.google.com/macros/s/AKfycbzXHSkAZ2HMrvw1ltZc-8MDAG2gwloJ7pLK1XN_Laff2ECF-teb9frxY36TPFXb5svqJg/exec';
 
-  // Chi apre questa pagina con il proprio link personale (…?k=…) la ritrova pronta le volte successive.
+  // La chiave personale arriva dal link personale (…?k=…) oppure è già salvata su questo telefono
   var k = '';
+  function tieniInIndirizzo(c) { try { history.replaceState(null, '', location.pathname + (c ? '?k=' + encodeURIComponent(c) : '')); } catch (e) { /* niente */ } }
   try {
     var p = new URLSearchParams(location.search);
+    if (p.get('esci') === '1') { localStorage.removeItem('scuK'); localStorage.removeItem('scuKey'); tieniInIndirizzo(''); }
     k = (p.get('k') || '').replace(/[^A-Za-z0-9]/g, '');
-    if (k) { localStorage.setItem('scuK', k); history.replaceState(null, '', location.pathname); }
-    else { k = localStorage.getItem('scuK') || ''; }
+    if (k) { localStorage.setItem('scuK', k); }
+    else if (p.get('esci') !== '1') { k = localStorage.getItem('scuK') || localStorage.getItem('scuKey') || ''; if (k) tieniInIndirizzo(k); }
   } catch (e) { /* senza memoria del browser si entra con il codice personale */ }
-  var url = APP + '?avvio=1' + (k ? '&k=' + encodeURIComponent(k) : '');
-  var f = document.getElementById('app'), avvio = document.getElementById('avvio'), fuori = document.getElementById('fuori');
-  fuori.href = url;
 
-  // Dopo l'accesso l'app ci passa la chiave personale: la teniamo noi, così il codice non viene più chiesto.
-  // Si accetta solo dall'app su Google; con "Esci" la chiave si cancella.
-  window.addEventListener('message', function (e) {
-    var o = String(e.origin || ''), d = e.data || {};
-    if (!/^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|script\.google\.com)$/i.test(o)) return;
-    try {
-      if (d.scu === 'chiave' && /^[A-Za-z0-9]{10,80}$/.test(String(d.k || ''))) {
-        localStorage.setItem('scuK', d.k);
-        // appena scritto il codice: riapre l'app qui dentro, già con la chiave
-        if (d.entra) document.getElementById('app').src = APP + '?avvio=1&k=' + encodeURIComponent(d.k);
-      }
-      if (d.scu === 'esci') { localStorage.removeItem('scuK'); localStorage.removeItem('scuDiretta'); }
-    } catch (err) { /* niente */ }
-  });
+  var inst = '0';
+  try { inst = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? '1' : '0'; } catch (e) { inst = '0'; }
+  var coda = '&inst=' + inst + (k ? '&k=' + encodeURIComponent(k) : '');
 
-  // Su alcuni telefoni Google non lascia aprire l'app dentro questa pagina (account o cookie del browser).
-  // L'app, quando si apre, manda il segnale "pronto". Se non arriva, si apre l'app direttamente.
-  function apriDiretta() { try { localStorage.setItem('scuDiretta', String(Date.now())); } catch (e) { /* niente */ } location.replace(url); }
-  var diretta = 0;
-  try { diretta = Number(localStorage.getItem('scuDiretta') || 0); } catch (e) { diretta = 0; }
-  if (diretta && Date.now() - diretta < 7 * 864e5) {
-    location.replace(url); // su questo telefono funziona solo così: niente attesa (si riprova lo schermo intero dopo 7 giorni)
-  } else {
-    var pronta = false;
-    window.addEventListener('message', function (e) {
-      if (e.data && e.data.scu === 'pronto' && !pronta) { pronta = true; avvio.classList.add('via'); }
-    });
-    f.src = url;
-    setTimeout(function () { if (!pronta) apriDiretta(); }, 12000);
+  // Piano B: il gestionale nel browser, come il link di sempre
+  document.getElementById('browser').href = APP + '?avvio=1&via=diretta' + coda;
+  document.getElementById('riprova').onclick = function (e) { e.preventDefault(); location.reload(); };
+
+  function problema(testo) {
+    document.getElementById('msg').textContent = testo;
+    document.getElementById('aiuto').style.display = 'flex';
   }
+
+  var finito = false;
+  var lento = setTimeout(function () { if (!finito) problema('Ci sta mettendo più del solito…'); }, 15000);
+
+  fetch(APP + '?ui=1' + coda + '&t=' + Date.now(), { redirect: 'follow' })
+    .then(function (r) { if (!r.ok) throw new Error('codice ' + r.status); return r.text(); })
+    .then(function (html) {
+      if (html.indexOf('data-via="app"') < 0) throw new Error('risposta inattesa');
+      finito = true; clearTimeout(lento);
+      // L'app sa a quale indirizzo mandare le sue richieste; la libreria del QR si carica senza bloccare
+      var tag = '<' + 'script';
+      html = html.replace('<head>', '<head>' + tag + '>window.SCU_EXEC = ' + JSON.stringify(APP) + ';<\/script>')
+        .split(tag + ' src=').join(tag + ' async src=');
+      document.open();
+      document.write(html);
+      document.close();
+    })
+    .catch(function () {
+      finito = true; clearTimeout(lento);
+      problema('Non riesco a raggiungere il gestionale. Controlla la connessione e riprova.');
+    });
 </script>
 </body>
 </html>
